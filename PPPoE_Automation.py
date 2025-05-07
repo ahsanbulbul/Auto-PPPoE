@@ -1,63 +1,74 @@
 import sys
 import os
 from Credentials import get_admin, get_users
-from iUsers import get_usage_time # get_usage_time(username, password)
-from PPPoE_checker import pppoe_checker # pppoe_checker(admin_user, admin_pass)
-from PPPoE_setter import set_pppoe # set_pppoe(ADMIN_USER, ADMIN_PASS, username, pass)
+from iUsers import get_usage_time
+from PPPoE_checker import pppoe_checker
+from PPPoE_setter import set_pppoe
 
-# Check if status flag is passed
-status_mode = "s" in sys.argv
+# Constants
+USAGE_SOFT_LIMIT = 9000
 
-# Get the directory where the script is located
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
-# DB_FILE = os.path.join(script_dir, "test.db")
-# usage_limit=9000
-DB_FILE = os.path.join(script_dir, "credentials.db")
-usage_limit=500
-
-# Fetch data
-users = get_users(DB_FILE)
-admin = get_admin(DB_FILE)
-
-
-if status_mode:
-    for user in users:
-        username = user['username']
-        user['usage'] = get_usage_time(username, user['password'])
-        print(f"{username}: {user['usage']}")
-
-    print("Current PPPoE ID =>", pppoe_checker(admin['username'], admin['password']))
-
-    exit(0)  # Exit after printing the status
-
-# Current ID in use
-current_user = pppoe_checker(admin['username'], admin['password'])
-print("Current PPPoE ID =>", current_user)
-
-# Fetch usage and eligibility
-for user in users:
+def get_user_usage(user):
+    """Get usage for a user and add to user dict."""
     username = user['username']
     password = user['password']
     user['usage'] = get_usage_time(username, password)
-    user['eligibility'] = user['usage'] < usage_limit
+    user['eligibility'] = user['usage'] < USAGE_SOFT_LIMIT
+    return user
 
-    if(username==current_user and user['eligibility']==True):
-        print("Current ID can be used further")
-        exit(0)
+def display_status(users, admin):
+    """Display status for all users and current PPPoE ID."""
+    for user in users:
+        get_user_usage(user)
+        print(f"{user['username']}: {user['usage']}")
+    
+    print("Current PPPoE ID =>", pppoe_checker(admin['username'], admin['password']))
 
-# # Print results
-# print("Users:")
-# for user in users:
-#     print(f"Username: {user['username']}, Password: {user['password']}, Usage: {user['usage']}, Applicable: {user['eligibility']}")
-#
-# print("\nAdmin:")
-# print(f"Username: {admin["username"]}, Password: {admin["password"]}")
+def find_and_set_eligible_user(users, admin, current_user):
+    """Find eligible user and set PPPoE if necessary."""
+    # Check if current user is still eligible
+    for user in users:
+        if user['username'] == current_user and user['eligibility']:
+            print("Current ID can be used further")
+            return True
+    
+    # Find and set first eligible user
+    for user in users:
+        if user['eligibility']:
+            print("Applying ID:", user['username'])
+            reply = set_pppoe(admin['username'], admin['password'], user['username'], user['password'])
+            print(reply)
+            return True
+    
+    print("No eligible users found")
+    return False
 
-# Assign new ID
-for user in users:
-    if(user['eligibility'] == True):
-        print("Applying ID:", user['username'])
-        reply=set_pppoe(admin['username'], admin['password'], user['username'], user['password'])
-        print(reply)
+def main():
 
+    # Get script directory and DB file path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_file = os.path.join(script_dir, "credentials.db")
+    
+    # Fetch data
+    users = get_users(db_file)
+    admin = get_admin(db_file)
+    
+    # Handle status mode
+    status_mode = "s" in sys.argv
+    if status_mode:
+        display_status(users, admin)
+        return
+    
+    # Get current user
+    current_user = pppoe_checker(admin['username'], admin['password'])
+    print("Current PPPoE ID =>", current_user)
+    
+    # Process all users
+    for user in users:
+        get_user_usage(user)
+    
+    # Find and set eligible user if needed
+    find_and_set_eligible_user(users, admin, current_user)
+
+if __name__ == "__main__":
+    main()
