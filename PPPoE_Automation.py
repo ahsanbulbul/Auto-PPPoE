@@ -6,8 +6,8 @@ from PPPoE_checker import pppoe_checker
 from PPPoE_setter import set_pppoe
 
 # Constants
-USAGE_NORMAL_LIMIT = 9000
-USAGE_MAXIMUM_LIMIT = 11500
+USAGE_SOFT_LIMIT = 9000
+USAGE_HARD_LIMIT = 11500
 USAGE_SYSTEM_LIMIT = 12000
 FALLBACK_USERNAME = "WildEdgeCase"
 FALLBACK_PASSWORD = ":)"
@@ -17,19 +17,19 @@ def get_user_usage(user):
     username = user['username']
     password = user['password']
     user['usage'] = get_usage_time(username, password)
-    user['normal_eligible'] = user['usage'] < USAGE_NORMAL_LIMIT
-    user['maximum_eligible'] = user['usage'] < USAGE_MAXIMUM_LIMIT
+    user['under_soft_limit'] = user['usage'] < USAGE_SOFT_LIMIT
+    user['under_hard_limit'] = user['usage'] < USAGE_HARD_LIMIT
     return user
 
 def display_status(users, admin):
     """Display status for all users and current PPPoE ID."""
     for user in users:
         get_user_usage(user)
-        if user['normal_eligible']:
+        if user['under_soft_limit']:
             status = "OK"
         elif user['usage'] >= USAGE_SYSTEM_LIMIT:
             status = "OVER"
-        elif user['maximum_eligible']:
+        elif user['under_hard_limit']:
             status = "WARN"
         else:
             status = "OVER"
@@ -41,13 +41,13 @@ def find_and_set_eligible_user(users, admin, current_user):
     """Find eligible user and set PPPoE if necessary using the three-tier strategy."""
     # Check if current user is still under soft limit
     for user in users:
-        if user['username'] == current_user and user['normal_eligible']:
+        if user['username'] == current_user and user['under_soft_limit']:
             print("Current ID can be used further (under soft limit)")
             return True
     
     # Try to find a user under soft limit
     for user in users:
-        if user['normal_eligible']:
+        if user['under_soft_limit']:
             print("Applying ID (under soft limit):", user['username'])
             reply = set_pppoe(admin['username'], admin['password'], user['username'], user['password'])
             print(reply)
@@ -55,13 +55,13 @@ def find_and_set_eligible_user(users, admin, current_user):
     
     # Check if current user is under hard limit
     for user in users:
-        if user['username'] == current_user and user['maximum_eligible']:
+        if user['username'] == current_user and user['under_hard_limit']:
             print("Current ID can be used further (under hard limit)")
             return True
     
     # Try to find a user under hard limit
     for user in users:
-        if user['maximum_eligible']:
+        if user['under_hard_limit']:
             print("Applying ID (under hard limit):", user['username'])
             reply = set_pppoe(admin['username'], admin['password'], user['username'], user['password'])
             print(reply)
@@ -74,7 +74,6 @@ def find_and_set_eligible_user(users, admin, current_user):
     return True
 
 def main():
-
     # Get script directory and DB file path
     script_dir = os.path.dirname(os.path.abspath(__file__))
     db_file = os.path.join(script_dir, "credentials.db")
