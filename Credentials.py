@@ -11,13 +11,17 @@ def get_users(DB_FILE):
     conn.close()
     return users
 
-def get_admin(DB_FILE):
+def get_router(DB_FILE):
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
-    c.execute("SELECT username, password FROM admin WHERE id = 1")
+    c.execute("SELECT username, password FROM router WHERE id = 1")
     admin = c.fetchone()
 
+    c.execute("SELECT ssid FROM router WHERE id = 1")
+    ssid_row = c.fetchone()
+    ssid = ssid_row["ssid"] if ssid_row else None
+
     conn.close()
-    return dict(admin) if admin else None
+    return dict(admin), ssid if admin else None

@@ -1,13 +1,14 @@
 import sys
 import os
-from Credentials import get_admin, get_users
+from Credentials import get_router, get_users
 from iUsers import get_usage_time
 from PPPoE_checker import pppoe_checker
 from PPPoE_setter import set_pppoe
+from networkDetect import get_wifi_name
 
 # Constants
 USAGE_SOFT_LIMIT = 9000
-USAGE_HARD_LIMIT = 11500
+USAGE_HARD_LIMIT = 11000
 USAGE_SYSTEM_LIMIT = 12000
 FALLBACK_USERNAME = "WildEdgeCase"
 FALLBACK_PASSWORD = ":)"
@@ -27,12 +28,12 @@ def display_status(users, admin):
         get_user_usage(user)
         if user['under_soft_limit']:
             status = "OK"
-        elif user['usage'] >= USAGE_SYSTEM_LIMIT:
-            status = "OVER"
         elif user['under_hard_limit']:
             status = "WARN"
-        else:
+        elif user['usage'] >= USAGE_SYSTEM_LIMIT:
             status = "OVER"
+        else:
+            status = "MAX"
         print(f"{user['username']}\t{user['usage']}\t{status}")
     
     print("Current PPPoE ID =>", pppoe_checker(admin['username'], admin['password']))
@@ -80,7 +81,17 @@ def main():
     
     # Fetch data
     users = get_users(db_file)
-    admin = get_admin(db_file)
+    admin, ssid = get_router(db_file)
+
+    # If in Room, continue, else exit
+    wifi_name = get_wifi_name()
+    if ssid != wifi_name:
+        print("Not in the room. Exiting.")
+        print(wifi_name)
+        print(ssid)
+
+        exit(1)
+    print("Connected to WiFi:", wifi_name)
     
     # Handle status mode
     status_mode = "s" in sys.argv
