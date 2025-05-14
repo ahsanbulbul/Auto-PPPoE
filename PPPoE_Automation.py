@@ -86,10 +86,7 @@ def main():
     # If in Room, continue, else exit
     wifi_name = get_wifi_name()
     if ssid != wifi_name:
-        print("Not in the room. Exiting.")
-        print(wifi_name)
-        print(ssid)
-
+        print("Not in the room, Connected to ", wifi_name, " Exiting.")
         exit(1)
     print("Connected to WiFi:", wifi_name)
     
