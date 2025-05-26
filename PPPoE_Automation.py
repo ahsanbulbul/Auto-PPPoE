@@ -90,19 +90,11 @@ def main():
         exit(1)
     print("Connected to WiFi:", wifi_name)
     
-    # Handle status mode
-    status_mode = "s" in sys.argv
-    if status_mode:
-        display_status(users, admin)
-        return
+    # Process all users and display status
+    display_status(users, admin)
     
-    # Get current user
+    # Get current user from status display results
     current_user = pppoe_checker(admin['username'], admin['password'])
-    print("Current PPPoE ID =>", current_user)
-    
-    # Process all users
-    for user in users:
-        get_user_usage(user)
     
     # Find and set eligible user if needed
     find_and_set_eligible_user(users, admin, current_user)
