@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # APP_LOCATION="/opt/Auto-PPPoE"
-APP_LOCATION="/distros/codeblox/Codes/Projects/Auto-PPPoE"
+APP_LOCATION="/opt/Auto-PPPoE"
 # Log file path
 LOG_FILE="$APP_LOCATION/pppoe_automation.log"
 
